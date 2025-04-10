@@ -3,9 +3,10 @@ package api
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
-	"github.com/Luc1d1ty/cache-server/internal/cache" // Adjust this import path to match your module path
+	"github.com/Luc1d1ty/cache-server/internal/cache"
 )
 
 type APIHandler struct {
@@ -15,31 +16,37 @@ type APIHandler struct {
 type SetRequest struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
-	TTL   int    `json:"ttl,omitempty"` // TTL in seconds; optional field
+	TTL   int    `json:"ttl,omitempty"`
 }
 
 func (h *APIHandler) SetHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Unable to read request body", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
+    log.Println("[SetHandler] Received a /cache/set request")
 
-	var req SetRequest
-	err = json.Unmarshal(body, &req)
-	if err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-	if req.Key == "" {
-		http.Error(w, "Key is required", http.StatusBadRequest)
-		return
-	}
+    body, err := io.ReadAll(r.Body)
+    if err != nil {
+        log.Printf("[SetHandler] Error reading request body: %v", err)
+        http.Error(w, "Unable to read request body", http.StatusBadRequest)
+        return
+    }
+    defer r.Body.Close()
 
-	h.Cache.Set(req.Key, req.Value, req.TTL)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Key set successfully"))
+    var req SetRequest
+    err = json.Unmarshal(body, &req)
+    if err != nil {
+        log.Printf("[SetHandler] Invalid JSON: %v", err)
+        http.Error(w, "Invalid JSON", http.StatusBadRequest)
+        return
+    }
+    if req.Key == "" {
+        log.Println("[SetHandler] Missing key in request")
+        http.Error(w, "Key is required", http.StatusBadRequest)
+        return
+    }
+
+    h.Cache.Set(req.Key, req.Value, req.TTL)
+    log.Printf("[SetHandler] Key '%s' set successfully", req.Key)
+    w.WriteHeader(http.StatusOK)
+    w.Write([]byte("Key set successfully"))
 }
 
 func (h *APIHandler) GetHandler(w http.ResponseWriter, r *http.Request) {
